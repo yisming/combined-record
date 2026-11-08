@@ -3,15 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#9AB098">
     <title>整合型健康日誌 (睡眠與運動)</title>
 
-    <!-- iOS Web App 支援 -->
+    <!-- iOS Web App 專屬支援 -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="健康日誌">
-    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512' width='512' height='512'%3E%3Crect width='512' height='512' rx='128' fill='%239AB098'/%3E%3Cpath d='M256 128v256m-128-128h256' stroke='%23FFFFFF' stroke-width='40' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+    <link rel="apple-touch-icon" id="apple-touch-icon-link">
 
-    <!-- 動態 PWA Manifest 佔位符 -->
+    <!-- 動態 PWA Manifest 連結 (由下方 JS 生成 PNG 後注入) -->
     <link rel="manifest" id="dynamic-manifest">
 
     <!-- 套件匯入 -->
@@ -27,9 +28,10 @@
     <style>
         :root {
             --bg-main: #F7F5F0; --text-main: #5C544D; --card-bg: #FFFFFF;
-            /* 睡眠色系 */ --accent-sleep: #DDA793; --bg-sleep: #FDFBF7;
-            /* 運動色系 */ --accent-cardio: #E48A72; --accent-strength: #6B8EAD;
-            /* 共用色系 */ --accent-sage: #9AB098; --bg-admin: #F0F4F8; --accent-navy: #2C3E50; --accent-blue: #4A90E2;
+            --accent-sleep: #DDA793; --bg-sleep: #FDFBF7;
+            --accent-cardio: #E48A72; --bg-cardio: #FDF4F1;
+            --accent-strength: #6B8EAD; --bg-strength: #F2F6F9;
+            --accent-sage: #9AB098; --bg-admin: #F0F4F8; --accent-navy: #2C3E50; --accent-blue: #4A90E2;
         }
         body { font-family: 'Noto Sans TC', -apple-system, BlinkMacSystemFont, sans-serif; color: var(--text-main); background-color: var(--bg-main); transition: background-color 0.3s ease; -webkit-tap-highlight-color: transparent; }
         body.admin-mode { background-color: var(--bg-admin); }
@@ -41,7 +43,7 @@
         .nav-btn.active-role { background: var(--accent-sage); color: white; } .nav-btn.inactive-role { background: #E8F0E7; color: var(--accent-sage); }
         .nav-btn.active-admin { background: var(--accent-navy); color: white; } .nav-btn.inactive-admin { background: #e1e8f0; color: var(--accent-navy); }
 
-        .module-tab { padding: 10px 20px; font-weight: bold; border-radius: 10px; cursor: pointer; transition: all 0.2s; font-size: 15px; display: flex; items-center; justify-content: center; gap: 8px; flex: 1; text-align: center;}
+        .module-tab { padding: 10px 20px; font-weight: bold; border-radius: 10px; cursor: pointer; transition: all 0.2s; font-size: 15px; display: flex; align-items: center; justify-content: center; gap: 8px; flex: 1; text-align: center; touch-action: manipulation; }
         .module-tab.active { background-color: var(--accent-sage); color: white; box-shadow: 0 4px 10px rgba(154,176,152,0.3); }
         .module-tab.inactive { background-color: transparent; color: #8C8279; }
         .module-tab.inactive:hover { background-color: #F0EAE1; }
@@ -86,8 +88,8 @@
             </div>
         </div>
         <div class="flex items-center gap-1.5 md:gap-3">
-            <button id="btnInstallApp" class="hidden-view text-xs bg-[#E8F0E7] text-[#9AB098] hover:bg-[#d8e6d6] px-2.5 py-1.5 rounded-lg font-bold flex items-center border border-[#9AB098]" onclick="showInstallGuide()">
-                <i class="fa-solid fa-arrow-down-to-bracket mr-1"></i>安裝App
+            <button id="btnInstallApp" class="text-xs bg-[#E8F0E7] text-[#5C544D] hover:bg-[#d8e6d6] px-2.5 py-1.5 rounded-lg font-bold flex items-center border border-[#9AB098]" onclick="showInstallGuide()">
+                <i class="fa-solid fa-mobile-screen mr-1 text-[#9AB098]"></i>安裝App
             </button>
             <button id="btnPatient" class="nav-btn active-role" onclick="switchRole('patient')">
                 <i class="fa-solid fa-user mr-1"></i> 病友端
@@ -109,26 +111,64 @@
     </div>
 
     <!-- 共用彈窗 -->
-    <div id="installModal" class="modal-overlay"><div class="modal-card border-t-4 border-[#9AB098]"><i class="fa-solid fa-mobile-screen-button text-4xl text-[#9AB098] mb-3"></i><h3 class="text-xl font-bold text-[#5C544D] mb-2 serif">將日誌設為手機桌面 App</h3><div id="installContent" class="text-left text-xs md:text-sm text-gray-600 space-y-3 mb-5 leading-relaxed"></div><button onclick="closeModal('installModal')" class="w-full bg-[#9AB098] text-white py-2.5 rounded-lg font-bold hover:bg-[#839881]">我知道了</button></div></div>
-    <div id="authModal" class="modal-overlay"><div class="modal-card"><i class="fa-solid fa-user-shield text-4xl text-[#2C3E50] mb-3"></i><h3 class="text-xl font-bold text-[#2C3E50] mb-1 serif">管理員身份驗證</h3><p class="text-gray-500 text-sm mb-4">為保護病友隱私，請輸入密碼</p><input type="password" id="adminPassword" class="w-full p-3 border border-gray-300 rounded-lg mb-3 text-center tracking-widest" placeholder="請輸入密碼"><div id="authError" class="text-red-500 text-sm font-bold mb-3 hidden-view">密碼錯誤！</div><div class="flex gap-2"><button onclick="closeModal('authModal')" class="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-lg font-bold hover:bg-gray-300">取消</button><button onclick="verifyAdmin()" class="flex-1 bg-[#2C3E50] text-white py-2.5 rounded-lg font-bold hover:bg-[#1a252f]">確認</button></div></div></div>
-    <div id="alertModal" class="modal-overlay"><div class="modal-card border-t-4 border-[#9AB098]" id="alertCardBorder"><i id="alertIcon" class="fa-solid fa-circle-info text-4xl text-[#9AB098] mb-3"></i><h3 id="alertTitle" class="text-xl font-bold text-[#5C544D] mb-1 serif">提示</h3><p id="alertMsg" class="text-gray-600 text-sm mb-5 leading-relaxed"></p><button onclick="closeModal('alertModal')" class="w-full bg-[#9AB098] text-white py-2.5 rounded-lg font-bold hover:bg-[#839881]" id="alertBtn">確定</button></div></div>
-    <div id="deleteModal" class="modal-overlay"><div class="modal-card border-t-4 border-red-500"><i class="fa-solid fa-triangle-exclamation text-4xl text-red-500 mb-3"></i><h3 class="text-xl font-bold text-[#2C3E50] mb-1 serif">確認刪除資料？</h3><p id="deleteMsg" class="text-gray-600 text-sm mb-5 leading-relaxed">確定要將該病友的所有雲端記錄徹底刪除嗎？</p><div class="flex gap-2"><button onclick="closeModal('deleteModal')" class="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-lg font-bold hover:bg-gray-300">取消</button><button onclick="executeDelete()" class="flex-1 bg-red-500 text-white py-2.5 rounded-lg font-bold hover:bg-red-600">確認刪除</button></div></div></div>
+    <div id="installModal" class="modal-overlay">
+        <div class="modal-card border-t-4 border-[#9AB098]">
+            <i class="fa-solid fa-mobile-screen-button text-4xl text-[#9AB098] mb-3"></i>
+            <h3 class="text-xl font-bold text-[#5C544D] mb-2 serif">將日誌設為手機桌面 App</h3>
+            <div id="installContent" class="text-left text-xs md:text-sm text-gray-600 space-y-3 mb-5 leading-relaxed"></div>
+            <button onclick="closeModal('installModal')" class="w-full bg-[#9AB098] text-white py-2.5 rounded-lg font-bold hover:bg-[#839881]">我知道了</button>
+        </div>
+    </div>
+
+    <div id="authModal" class="modal-overlay">
+        <div class="modal-card">
+            <i class="fa-solid fa-user-shield text-4xl text-[#2C3E50] mb-3"></i>
+            <h3 class="text-xl font-bold text-[#2C3E50] mb-1 serif">管理員身份驗證</h3>
+            <p class="text-gray-500 text-sm mb-4">為保護病友隱私，請輸入密碼</p>
+            <input type="password" id="adminPassword" class="w-full p-3 border border-gray-300 rounded-lg mb-3 text-center tracking-widest" placeholder="請輸入密碼">
+            <div id="authError" class="text-red-500 text-sm font-bold mb-3 hidden-view">密碼錯誤！</div>
+            <div class="flex gap-2">
+                <button onclick="closeModal('authModal')" class="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-lg font-bold hover:bg-gray-300">取消</button>
+                <button onclick="verifyAdmin()" class="flex-1 bg-[#2C3E50] text-white py-2.5 rounded-lg font-bold hover:bg-[#1a252f]">確認</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="alertModal" class="modal-overlay">
+        <div class="modal-card border-t-4 border-[#9AB098]" id="alertCardBorder">
+            <i id="alertIcon" class="fa-solid fa-circle-info text-4xl text-[#9AB098] mb-3"></i>
+            <h3 id="alertTitle" class="text-xl font-bold text-[#5C544D] mb-1 serif">提示</h3>
+            <p id="alertMsg" class="text-gray-600 text-sm mb-5 leading-relaxed"></p>
+            <button onclick="closeModal('alertModal')" class="w-full bg-[#9AB098] text-white py-2.5 rounded-lg font-bold hover:bg-[#839881]" id="alertBtn">確定</button>
+        </div>
+    </div>
+
+    <div id="deleteModal" class="modal-overlay">
+        <div class="modal-card border-t-4 border-red-500">
+            <i class="fa-solid fa-triangle-exclamation text-4xl text-red-500 mb-3"></i>
+            <h3 class="text-xl font-bold text-[#2C3E50] mb-1 serif">確認刪除資料？</h3>
+            <p id="deleteMsg" class="text-gray-600 text-sm mb-5 leading-relaxed">確定要將該病友的所有雲端記錄徹底刪除嗎？</p>
+            <div class="flex gap-2">
+                <button onclick="closeModal('deleteModal')" class="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-lg font-bold hover:bg-gray-300">取消</button>
+                <button onclick="executeDelete()" class="flex-1 bg-red-500 text-white py-2.5 rounded-lg font-bold hover:bg-red-600">確認刪除</button>
+            </div>
+        </div>
+    </div>
 
     <!-- 頁面主要內容 -->
     <div class="max-w-7xl mx-auto px-3 md:px-4 w-full pb-10">
 
         <!-- ==================== 病友端 (Patient View) ==================== -->
         <div id="patientView">
-            
             <!-- 共用病友資訊區 -->
             <div class="card border-l-4 border-[#9AB098] bg-white">
                 <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div class="flex items-center gap-3">
                         <label class="font-bold text-sm md:text-base text-[#5C544D] whitespace-nowrap">病友姓名：</label>
-                        <input type="text" id="patientName" placeholder="請輸入姓名" class="w-full md:w-48" onchange="loadAllPatientData()">
+                        <input type="text" id="patientName" placeholder="請輸入姓名 (例如: 王大明)" class="w-full md:w-56" onchange="loadAllPatientData()">
                     </div>
                     <div class="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-200">
-                        <label class="text-sm font-bold text-gray-600 whitespace-nowrap">今日日期：</label>
+                        <label class="text-sm font-bold text-gray-600 whitespace-nowrap">記錄日期：</label>
                         <input type="date" id="globalDate" class="text-sm border-none bg-transparent font-bold text-[#5C544D] p-0 min-h-0" onchange="syncGlobalDate()">
                     </div>
                 </div>
@@ -141,7 +181,6 @@
                     <p class="text-gray-500 text-sm">溫柔記錄每一天的睡眠，讓我們陪伴您找回生活的節奏。</p>
                 </header>
                 <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
-                    <!-- 睡眠輸入 -->
                     <div class="lg:col-span-5 card">
                         <div class="flex justify-between items-center border-b border-gray-200 mb-5 pb-3">
                             <button type="button" onclick="changeGlobalDate(-1)" class="date-nav-btn font-bold"><i class="fa-solid fa-chevron-left mr-1"></i> 前一天</button>
@@ -167,7 +206,6 @@
                             <div class="input-group"><label>特別註記 (心情/症狀)</label><input type="text" id="sleepNotes" placeholder="例如: 睡前有點胸悶..." oninput="calcSleep()"></div>
                         </form>
                     </div>
-                    <!-- 睡眠圖表 -->
                     <div class="lg:col-span-7 flex flex-col gap-5">
                         <div class="card bg-[#FDFBF7] text-center border-[#E8DCCB]">
                             <h2 class="text-lg font-bold mb-3 serif text-[#DDA793]" id="sleepDayTitle">-- 睡眠指標</h2>
@@ -181,13 +219,14 @@
                             <div class="flex flex-wrap justify-between items-center mb-3 gap-2">
                                 <div class="flex items-center gap-2">
                                     <h3 class="text-base md:text-lg font-bold text-[#5C544D]"><i class="fa-solid fa-chart-line mr-1 text-[#DDA793]"></i>睡眠趨勢分析</h3>
-                                    <span id="avgSE" class="text-xs bg-[#F9F6F0] px-2 py-1 rounded text-[#DDA793] font-bold"></span>
+                                    <span id="patAvgTag" class="text-xs bg-[#F9F6F0] px-2.5 py-1 rounded-full text-gray-600">7天平均效率: <b id="avgSE" class="text-[#DDA793]">--%</b></span>
                                 </div>
                                 <div class="flex gap-1.5">
                                     <button onclick="setPatSleepMode('week')" id="btnPatSleepW" class="text-xs px-3 py-1 rounded-full bg-[#DDA793] text-white font-bold transition-colors">自選7天</button>
                                     <button onclick="setPatSleepMode('all')" id="btnPatSleepA" class="text-xs px-3 py-1 rounded-full bg-gray-200 text-gray-600 font-bold transition-colors hover:bg-gray-300">歷史總覽</button>
                                 </div>
                             </div>
+                            <p class="text-xs text-gray-400 mb-2"><i class="fa-solid fa-hand-pointer mr-1"></i>以當前選定日期為第 1 天，展示連續 7 天數據</p>
                             <div class="chart-scroll-container"><div class="chart-wrapper" id="patSleepChartWrap"><canvas id="patSleepChart"></canvas></div></div>
                         </div>
                     </div>
@@ -200,17 +239,15 @@
                     <h1 class="text-2xl md:text-3xl font-bold mb-2 text-[#6B8EAD]">運動日誌記錄</h1>
                     <p class="text-gray-500 text-sm">每天微小的努力，都是愛自己的證明。</p>
                 </header>
-                <!-- 目標設定 -->
                 <div class="card mb-5 border-l-4 border-[#6B8EAD] bg-white">
-                    <h2 class="text-base font-bold mb-3 serif text-[#5C544D]"><i class="fa-solid fa-bullseye text-[#6B8EAD] mr-2"></i>活動目標設定</h2>
+                    <h2 class="text-base font-bold mb-3 serif text-[#5C544D]"><i class="fa-solid fa-bullseye text-[#6B8EAD] mr-2"></i>我的活動目標設定</h2>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        <div class="input-group"><label class="text-[#E48A72]">每日有氧目標(分)</label><input type="number" id="targetCardio" placeholder="15" min="0" onchange="saveExTargets()"></div>
-                        <div class="input-group"><label class="text-[#6B8EAD]">每次肌力目標(次)</label><input type="number" id="targetStrengthReps" placeholder="30" min="0" onchange="saveExTargets()"></div>
-                        <div class="input-group"><label class="text-[#4A7C59]">每週肌力目標(天)</label><input type="number" id="targetStrengthDays" placeholder="3" min="0" max="7" onchange="saveExTargets()"></div>
+                        <div class="input-group"><label class="text-[#E48A72]">每日有氧運動目標 (分鐘)</label><input type="number" id="targetCardio" placeholder="例如: 15" min="0" onchange="saveExTargets()"></div>
+                        <div class="input-group"><label class="text-[#6B8EAD]">每次肌力訓練目標 (次數)</label><input type="number" id="targetStrengthReps" placeholder="例如: 30" min="0" onchange="saveExTargets()"></div>
+                        <div class="input-group"><label class="text-[#4A7C59]">每週肌力訓練目標 (天數)</label><input type="number" id="targetStrengthDays" placeholder="例如: 3" min="0" max="7" onchange="saveExTargets()"></div>
                     </div>
                 </div>
                 <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
-                    <!-- 運動輸入 -->
                     <div class="lg:col-span-4 flex flex-col gap-5">
                         <div class="card flex-grow">
                             <div class="flex justify-between items-center border-b border-gray-200 mb-5 pb-3">
@@ -222,29 +259,28 @@
                                 <div class="p-4 rounded-xl bg-[var(--bg-cardio)] border border-[#F2D7D0]">
                                     <h3 class="section-title text-[var(--accent-cardio)] border-[var(--accent-cardio)]"><i class="fa-solid fa-heart-pulse mr-2"></i>有氧運動</h3>
                                     <div class="space-y-3 mt-2">
-                                        <div class="input-group"><label>運動項目</label><input type="text" id="cardioType" placeholder="散步, 快走..." oninput="saveDailyEx()"></div>
+                                        <div class="input-group"><label>運動項目</label><input type="text" id="cardioType" placeholder="散步, 快走, 腳踏車..." oninput="saveDailyEx()"></div>
                                         <div class="input-group"><label>持續時間 (分鐘)</label><input type="number" id="cardioMins" min="0" placeholder="0" oninput="saveDailyEx()"></div>
                                     </div>
                                 </div>
                                 <div class="p-4 rounded-xl bg-[var(--bg-strength)] border border-[#D5E1EA]">
                                     <h3 class="section-title text-[var(--accent-strength)] border-[var(--accent-strength)]"><i class="fa-solid fa-dumbbell mr-2"></i>肌力訓練</h3>
                                     <div class="space-y-3 mt-2">
-                                        <div class="input-group"><label>訓練項目</label><input type="text" id="strengthType" placeholder="深蹲, 彈力帶..." oninput="saveDailyEx()"></div>
+                                        <div class="input-group"><label>訓練部位 / 項目</label><input type="text" id="strengthType" placeholder="深蹲, 靠牆站立, 彈力帶..." oninput="saveDailyEx()"></div>
                                         <div class="grid grid-cols-2 gap-2">
-                                            <div class="input-group"><label>次數(每組)</label><input type="number" id="strengthReps" min="0" placeholder="0" oninput="saveDailyEx()"></div>
-                                            <div class="input-group"><label>組數</label><input type="number" id="strengthSets" min="0" placeholder="0" oninput="saveDailyEx()"></div>
+                                            <div class="input-group"><label>次數 (每組幾下)</label><input type="number" id="strengthReps" min="0" placeholder="0" oninput="saveDailyEx()"></div>
+                                            <div class="input-group"><label>組數 (共做幾組)</label><input type="number" id="strengthSets" min="0" placeholder="0" oninput="saveDailyEx()"></div>
                                         </div>
                                     </div>
                                 </div>
-                                <div class="input-group"><label>心得註記</label><input type="text" id="exNotes" placeholder="今天運動感覺如何？" oninput="saveDailyEx()"></div>
+                                <div class="input-group"><label>心情與心得註記</label><input type="text" id="exNotes" placeholder="今天運動的感覺如何呢？" oninput="saveDailyEx()"></div>
                             </form>
                         </div>
                     </div>
-                    <!-- 運動圖表 -->
                     <div class="lg:col-span-8 flex flex-col gap-5">
                         <div class="card feedback-box" id="feedbackBox">
                             <div class="feedback-icon" id="feedbackIcon"><i class="fa-solid fa-seedling"></i></div>
-                            <div><h3 class="text-base font-bold text-[#5C544D] mb-1" id="feedbackTitle">歡迎記錄運動！</h3><p class="text-xs md:text-sm text-gray-600" id="feedbackText">請設定目標並開始記錄。</p></div>
+                            <div><h3 class="text-base font-bold text-[#5C544D] mb-1 serif" id="feedbackTitle">歡迎開始您的運動旅程！</h3><p class="text-xs md:text-sm text-gray-600 leading-relaxed" id="feedbackText">請設定目標並開始記錄第一筆資料吧。</p></div>
                         </div>
                         <div class="card flex-grow">
                             <div class="flex flex-wrap justify-between items-center mb-3 gap-2">
@@ -256,12 +292,12 @@
                             </div>
                             <div class="space-y-6 mt-4">
                                 <div>
-                                    <h4 class="text-xs font-bold text-[var(--accent-cardio)] mb-1 flex justify-between"><span>🔥 有氧時間 (分鐘)</span><span id="cardioStatusText" class="text-gray-500"></span></h4>
+                                    <h4 class="text-xs md:text-sm font-bold text-[var(--accent-cardio)] mb-1 flex justify-between"><span>🔥 有氧時間 (分鐘)</span><span id="cardioStatusText" class="text-gray-500 font-normal"></span></h4>
                                     <div class="chart-scroll-container"><div class="chart-wrapper" id="patCardioChartWrap"><canvas id="patCardioChart"></canvas></div></div>
                                 </div>
                                 <hr class="border-gray-100">
                                 <div>
-                                    <h4 class="text-xs font-bold text-[var(--accent-strength)] mb-1 flex justify-between"><span>💪 肌力進展 (次數與天數)</span><span id="strengthStatusText" class="text-gray-500"></span></h4>
+                                    <h4 class="text-xs md:text-sm font-bold text-[var(--accent-strength)] mb-1 flex justify-between"><span>💪 肌力訓練進展 (每日次數 & 每週天數)</span><span id="strengthStatusText" class="text-gray-500 font-normal"></span></h4>
                                     <div class="chart-scroll-container"><div class="chart-wrapper" id="patStrengthChartWrap"><canvas id="patStrengthChart"></canvas></div></div>
                                 </div>
                             </div>
@@ -275,7 +311,7 @@
                 <button onclick="syncToCloudAll()" class="bg-[#9AB098] hover:bg-[#839881] active:scale-95 text-white px-8 py-3 rounded-full font-bold shadow-md transition-all text-sm md:text-base">
                     <i class="fa-solid fa-cloud-arrow-up mr-1.5"></i>儲存並同步全部資料至雲端
                 </button>
-                <p class="text-xs text-gray-400 mt-2">您的資料將安全加密儲存，醫療團隊可即時查看給予建議。</p>
+                <p class="text-xs text-gray-400 mt-2">點擊後將同時備份您的睡眠與運動記錄至醫療團隊雲端。</p>
             </div>
         </div>
 
@@ -283,7 +319,7 @@
         <div id="adminView" class="hidden-view">
             <header class="mb-6 border-b-2 border-[#2C3E50] pb-4 flex flex-col md:flex-row justify-between items-start md:items-end gap-3">
                 <div>
-                    <h1 class="text-2xl md:text-3xl font-bold text-[#2C3E50]">整合健康後台</h1>
+                    <h1 class="text-2xl md:text-3xl font-bold text-[#2C3E50]">整合健康管理後台</h1>
                     <p class="text-gray-500 text-xs md:text-sm mt-1">醫療團隊專屬介面：監控病友居家睡眠與運動綜合趨勢</p>
                 </div>
                 <div class="flex items-center gap-2 w-full md:w-auto justify-end">
@@ -306,19 +342,31 @@
                 <div id="adminSleepModule">
                     <h2 class="text-lg font-bold text-[#2C3E50] mb-3"><i class="fa-solid fa-moon text-[#DDA793] mr-2"></i>睡眠數據概覽</h2>
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
-                        <div class="card border-l-4 border-[#DDA793] bg-white p-3"><div class="text-xs text-gray-500 font-bold">平均睡眠效率</div><div class="text-xl font-bold text-[#2C3E50] mt-1" id="admAvgSE">--%</div></div>
-                        <div class="card border-l-4 border-[#DDA793] bg-white p-3"><div class="text-xs text-gray-500 font-bold">平均睡眠總長</div><div class="text-xl font-bold text-[#2C3E50] mt-1" id="admAvgTST">-- <span class="text-xs">hr</span></div></div>
-                        <div class="card border-l-4 border-[#DDA793] bg-white p-3"><div class="text-xs text-gray-500 font-bold">平均躺床時間</div><div class="text-xl font-bold text-[#2C3E50] mt-1" id="admAvgTIB">-- <span class="text-xs">hr</span></div></div>
+                        <div class="card border-l-4 border-[#DDA793] bg-white p-3"><div class="text-xs text-gray-500 font-bold">整體平均睡眠效率</div><div class="text-xl font-bold text-[#2C3E50] mt-1" id="admAvgSE">--%</div></div>
+                        <div class="card border-l-4 border-[#DDA793] bg-white p-3"><div class="text-xs text-gray-500 font-bold">整體平均睡眠總長</div><div class="text-xl font-bold text-[#2C3E50] mt-1" id="admAvgTST">-- <span class="text-xs">hr</span></div></div>
+                        <div class="card border-l-4 border-[#DDA793] bg-white p-3"><div class="text-xs text-gray-500 font-bold">整體平均躺床時間</div><div class="text-xl font-bold text-[#2C3E50] mt-1" id="admAvgTIB">-- <span class="text-xs">hr</span></div></div>
                         <div class="card border-l-4 border-yellow-400 bg-white p-3"><div class="text-xs text-gray-500 font-bold">睡眠警示</div><div class="text-xs text-red-500 mt-1 font-medium line-clamp-2" id="admAlertSleep">-</div></div>
                     </div>
                     
                     <div class="card mb-5">
                         <div class="flex flex-wrap justify-between items-center mb-3 gap-2">
-                            <h3 class="text-sm font-bold text-[#2C3E50]">趨勢分析 (起始日：<input type="date" id="admSleepStartDate" class="text-xs p-1 border rounded bg-white" onchange="updateAdmSleepChart()">)</h3>
-                            <div class="flex gap-1">
-                                <button onclick="setAdmSleepMode('week')" id="btnAdmSleepW" class="text-xs px-2 py-1 rounded bg-[#DDA793] text-white font-bold">自選7天</button>
-                                <button onclick="setAdmSleepMode('all')" id="btnAdmSleepA" class="text-xs px-2 py-1 rounded bg-gray-200 text-gray-600 font-bold">總覽</button>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <h3 class="text-sm font-bold text-[#2C3E50]">睡眠趨勢分析</h3>
+                                <div class="flex items-center gap-1 bg-gray-50 border px-2 py-1 rounded">
+                                    <label class="text-xs text-gray-600 font-bold">第1天起始日：</label>
+                                    <input type="date" id="admSleepStartDate" class="text-xs p-0.5 border-none bg-transparent font-bold min-h-0" onchange="updateAdmSleepChart()">
+                                </div>
                             </div>
+                            <div class="flex gap-1">
+                                <button onclick="setAdmSleepMode('week')" id="btnAdmSleepW" class="text-xs px-2.5 py-1 rounded bg-[#DDA793] text-white font-bold">自選7天</button>
+                                <button onclick="setAdmSleepMode('all')" id="btnAdmSleepA" class="text-xs px-2.5 py-1 rounded bg-gray-200 text-gray-600 font-bold">歷史總覽</button>
+                            </div>
+                        </div>
+                        <div id="admin7DaySummary" class="text-xs bg-[#F0F4F8] text-[#2C3E50] p-2.5 rounded-lg mb-3 flex flex-wrap gap-4 font-medium">
+                            <div>區間：<span id="admRangeText" class="font-bold">--</span></div>
+                            <div>7天平均效率：<span id="adm7AvgSE" class="font-bold text-[#E74C3C]">--%</span></div>
+                            <div>7天平均睡眠：<span id="adm7AvgTST" class="font-bold text-[#4A90E2]">-- hr</span></div>
+                            <div>7天平均躺床：<span id="adm7AvgTIB" class="font-bold text-[#2C3E50]">-- hr</span></div>
                         </div>
                         <div class="chart-scroll-container"><div class="chart-wrapper" id="admSleepChartWrap"><canvas id="admSleepChart"></canvas></div></div>
                     </div>
@@ -328,8 +376,6 @@
                         <div class="overflow-x-auto admin-table-wrapper"><table class="w-full admin-table"><thead><tr><th>日期</th><th>上床</th><th>熄燈</th><th>入睡耗時</th><th>醒次數</th><th>醒總時</th><th>清醒</th><th>下床</th><th>躺床</th><th>實睡</th><th>效率</th><th>小睡</th><th>註記</th></tr></thead><tbody id="admSleepTableBody"></tbody></table></div>
                     </div>
                 </div>
-
-                <hr class="my-8 border-gray-300 border-dashed">
 
                 <!-- 後台運動模組 -->
                 <div id="adminExerciseModule" class="hidden-view">
@@ -343,15 +389,15 @@
                     
                     <div class="card mb-5">
                         <div class="flex flex-wrap justify-between items-center mb-3 gap-2">
-                            <h3 class="text-sm font-bold text-[#2C3E50]">趨勢分析</h3>
+                            <h3 class="text-sm font-bold text-[#2C3E50]">運動趨勢分析</h3>
                             <div class="flex gap-1">
-                                <button onclick="setAdmExMode('week')" id="btnAdmExW" class="text-xs px-2 py-1 rounded bg-[#E48A72] text-white font-bold">近期7天</button>
-                                <button onclick="setAdmExMode('all')" id="btnAdmExA" class="text-xs px-2 py-1 rounded bg-gray-200 text-gray-600 font-bold">總覽</button>
+                                <button onclick="setAdmExMode('week')" id="btnAdmExW" class="text-xs px-2.5 py-1 rounded bg-[#E48A72] text-white font-bold">近期7天</button>
+                                <button onclick="setAdmExMode('all')" id="btnAdmExA" class="text-xs px-2.5 py-1 rounded bg-gray-200 text-gray-600 font-bold">歷史總覽</button>
                             </div>
                         </div>
                         <div class="space-y-4">
-                            <div class="chart-scroll-container"><h4 class="text-xs font-bold text-[#E48A72]">🔥 有氧(分)</h4><div class="chart-wrapper" id="admCardioChartWrap" style="height:200px;"><canvas id="admCardioChart"></canvas></div></div>
-                            <div class="chart-scroll-container"><h4 class="text-xs font-bold text-[#6B8EAD]">💪 肌力(次)</h4><div class="chart-wrapper" id="admStrengthChartWrap" style="height:200px;"><canvas id="admStrengthChart"></canvas></div></div>
+                            <div class="chart-scroll-container"><h4 class="text-xs font-bold text-[#E48A72]">🔥 有氧時間趨勢 (分鐘)</h4><div class="chart-wrapper" id="admCardioChartWrap" style="height:220px;"><canvas id="admCardioChart"></canvas></div></div>
+                            <div class="chart-scroll-container"><h4 class="text-xs font-bold text-[#6B8EAD]">💪 肌力次數趨勢 (當日總次數)</h4><div class="chart-wrapper" id="admStrengthChartWrap" style="height:220px;"><canvas id="admStrengthChart"></canvas></div></div>
                         </div>
                     </div>
 
@@ -369,37 +415,67 @@
 
     <script>
         // ==========================================
-        // 0. 動態 PWA Manifest & Service Worker
+        // 0. 自動繪製標準 PNG 圖示並生成 PWA Manifest (解決 Android/iOS 安裝問題)
         // ==========================================
-        document.addEventListener("DOMContentLoaded", () => {
-            const currentUrl = window.location.href.split('#')[0].split('?')[0];
-            const manifestJson = {
-                "name": "整合健康日誌", "short_name": "健康日誌", "start_url": currentUrl, "display": "standalone",
-                "background_color": "#F7F5F0", "theme_color": "#9AB098",
-                "icons": [{"src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512' width='512' height='512'%3E%3Crect width='512' height='512' rx='128' fill='%239AB098'/%3E%3Cpath d='M256 128v256m-128-128h256' stroke='%23FFFFFF' stroke-width='40' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E", "sizes": "512x512", "type": "image/svg+xml", "purpose": "any maskable"}]
-            };
-            const manifestBlob = new Blob([JSON.stringify(manifestJson)], { type: 'application/manifest+json' });
-            document.getElementById('dynamic-manifest').href = URL.createObjectURL(manifestBlob);
-        });
-
-        if ('serviceWorker' in navigator) {
-            const swCode = "self.addEventListener('install', e => e.waitUntil(self.skipWaiting())); self.addEventListener('activate', e => e.waitUntil(self.clients.claim())); self.addEventListener('fetch', e => {});";
-            const blob = new Blob([swCode], { type: 'application/javascript' }); navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => {});
+        function generateAppIconPNG(size) {
+            const canvas = document.createElement('canvas');
+            canvas.width = size; canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            // 繪製圓角鼠尾草綠底圖
+            ctx.fillStyle = '#9AB098';
+            ctx.beginPath();
+            ctx.roundRect(0, 0, size, size, size * 0.22);
+            ctx.fill();
+            // 繪製白色醫療十字與愛心意象
+            ctx.fillStyle = '#FFFFFF';
+            const barW = size * 0.14;
+            const barL = size * 0.50;
+            ctx.fillRect((size - barW)/2, (size - barL)/2, barW, barL);
+            ctx.fillRect((size - barL)/2, (size - barW)/2, barL, barW);
+            return canvas.toDataURL('image/png');
         }
 
+        (function initPWA() {
+            try {
+                const icon192 = generateAppIconPNG(192);
+                const icon512 = generateAppIconPNG(512);
+                document.getElementById('apple-touch-icon-link').href = icon192;
+
+                const baseUrl = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '/');
+                const manifestObj = {
+                    "name": "整合健康日誌 (睡眠與運動)",
+                    "short_name": "健康日誌",
+                    "start_url": window.location.href.split('#')[0].split('?')[0],
+                    "scope": baseUrl,
+                    "display": "standalone",
+                    "background_color": "#F7F5F0",
+                    "theme_color": "#9AB098",
+                    "icons": [
+                        { "src": icon192, "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+                        { "src": icon512, "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+                    ]
+                };
+                const manifestStr = encodeURIComponent(JSON.stringify(manifestObj));
+                document.getElementById('dynamic-manifest').href = `data:application/manifest+json,${manifestStr}`;
+            } catch(e) { console.warn('PWA Icon init error:', e); }
+
+            // 註冊同目錄下的實體 sw.js (取代被禁止的 Blob URL)
+            if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
+                navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW registration note:', err.message));
+            }
+        })();
+
         // ==========================================
-        // 1. Firebase 初始化
+        // 1. Firebase 初始化 (已移除 apiKey 避免 GitHub 警報通知)
         // ==========================================
         const firebaseConfig = {
-            apiKey: "AIzaSyC0e1UDY2RRIBTuV-AEQm3hZcGxz76rd78",
-            authDomain: "sleep-diary-b3d57.firebaseapp.com",
-            databaseURL: "https://sleep-diary-b3d57-default-rtdb.firebaseio.com",
-            projectId: "sleep-diary-b3d57"
+            databaseURL: "https://sleep-diary-b3d57-default-rtdb.firebaseio.com"
         };
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
+        // 嚴格對應 Firebase 安全性規則設定的兩個開放節點名稱
         const sleepDB = database.ref('sleep_logs');
-        const exerciseDB = database.ref('exercise_logs_v2'); // Exercise uses the v2 path based on previous constraints
+        const exerciseDB = database.ref('exercise_logs');
         
         firebase.database().ref('.info/connected').on('value', function(snap) {
             const dot = document.getElementById('statusDot'); const txt = document.getElementById('statusText');
@@ -412,7 +488,6 @@
         let currentRole = 'patient';
         let deferredPrompt = null;
         
-        // 狀態變數 (Patient)
         let globalDateStr = "";
         let globalPatientName = "";
         let pSleepData = {};
@@ -423,13 +498,11 @@
         let pSleepChartMode = 'week', pExChartMode = 'week';
         let pSleepChartInst = null, pCardioChartInst = null, pStrengthChartInst = null;
 
-        // 狀態變數 (Admin)
         let aSleepSnap = null, aExSnap = null;
         let aSleepChartMode = 'week', aExChartMode = 'week';
         let aSleepChartInst = null, aCardioChartInst = null, aStrengthChartInst = null;
         let adminUsers = new Set();
 
-        // Helpers
         function getTodayStr() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
         function addDaysStr(dateStr, days) { if(!dateStr) return getTodayStr(); const parts = dateStr.split('-'); const d = new Date(parseInt(parts[0],10), parseInt(parts[1],10)-1, parseInt(parts[2],10)); d.setDate(d.getDate() + days); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
         function getDayOfWeek(dateStr) { if(!dateStr) return ''; const parts = dateStr.split('-'); const d = new Date(parseInt(parts[0],10), parseInt(parts[1],10)-1, parseInt(parts[2],10)); return ['日','一','二','三','四','五','六'][d.getDay()]; }
@@ -437,7 +510,7 @@
         function getEmptyEx() { return { cardioType:'', cardioMins:'', strengthType:'', strengthReps:'', strengthSets:'', exNotes:'', hasCardio:false, hasStrength:false }; }
 
         // ==========================================
-        // 2. 生命週期與導航
+        // 2. 生命週期與 PWA 安裝導引
         // ==========================================
         window.onload = () => {
             globalDateStr = getTodayStr();
@@ -445,26 +518,67 @@
             document.getElementById('admSleepStartDate').value = globalDateStr;
             
             const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
-            if (!isStandalone) document.getElementById('btnInstallApp').classList.remove('hidden-view');
+            if (isStandalone) document.getElementById('btnInstallApp').classList.add('hidden-view');
 
             loadAllPatientData();
 
-            // 監聽兩邊資料庫
-            sleepDB.on('value', snap => { processAdminList(); if(currentRole === 'admin' && document.getElementById('adminPatientSelect').value) loadAdminData(); });
-            exerciseDB.on('value', snap => { processAdminList(); if(currentRole === 'admin' && document.getElementById('adminPatientSelect').value) loadAdminData(); });
+            sleepDB.on('value', () => { processAdminList(); if(currentRole === 'admin' && document.getElementById('adminPatientSelect').value) loadAdminData(); });
+            exerciseDB.on('value', () => { processAdminList(); if(currentRole === 'admin' && document.getElementById('adminPatientSelect').value) loadAdminData(); });
         };
 
-        window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt = e; document.getElementById('btnInstallApp').classList.remove('hidden-view'); });
+        window.addEventListener('beforeinstallprompt', e => {
+            e.preventDefault();
+            deferredPrompt = e;
+            document.getElementById('btnInstallApp').classList.remove('hidden-view');
+        });
+
         function showInstallGuide() {
-            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then(c => {
+                    if (c.outcome === 'accepted') document.getElementById('btnInstallApp').classList.add('hidden-view');
+                    deferredPrompt = null;
+                });
+                return;
+            }
+
+            const ua = navigator.userAgent || '';
+            const isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+            const isInApp = /Line|FBAN|FBAV|Instagram/i.test(ua);
             const container = document.getElementById('installContent');
-            if (deferredPrompt) { deferredPrompt.prompt(); deferredPrompt.userChoice.then(c => { if (c.outcome === 'accepted') document.getElementById('btnInstallApp').classList.add('hidden-view'); deferredPrompt = null; }); return; }
-            if (isIOS) container.innerHTML = `<div class="p-3 bg-gray-50 rounded"><p class="font-bold text-[#5C544D] mb-1"><i class="fa-brands fa-apple text-lg mr-1 text-gray-700"></i>iPhone/iPad 安裝：</p><ol class="list-decimal list-inside text-xs text-gray-600"><li>點擊下方 <b>分享</b> 按鈕。</li><li>選擇 <b>加入主畫面</b>。</li><li>點擊 <b>新增</b>。</li></ol></div>`;
-            else container.innerHTML = `<div class="p-3 bg-gray-50 rounded"><p class="font-bold text-[#5C544D] mb-1"><i class="fa-brands fa-android text-lg mr-1 text-green-600"></i>Android 安裝：</p><ol class="list-decimal list-inside text-xs text-gray-600"><li>點選右上角 <b>三個點</b> 選單。</li><li>選擇 <b>加到主螢幕</b> 或 <b>安裝App</b>。</li></ol></div>`;
+
+            let html = '';
+            if (isInApp) {
+                html += `<div class="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 font-bold mb-2">
+                    ⚠️ 偵測到您正在使用 LINE 或社群內建瀏覽器！<br>請先點選右下角或右上角「<b>...</b>」，選擇「<b>以預設瀏覽器 (Safari / Chrome) 開啟</b>」，才能安裝至手機桌面喔！
+                </div>`;
+            }
+
+            if (isIOS) {
+                html += `<div class="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                    <p class="font-bold text-[#5C544D] mb-1.5"><i class="fa-brands fa-apple text-lg mr-1"></i>iPhone / iPad 加入主畫面步驟：</p>
+                    <ol class="list-decimal list-inside space-y-1.5 text-gray-600">
+                        <li>請使用 <b>Safari 瀏覽器</b> 開啟此網頁。</li>
+                        <li>點擊畫面底部中間的 <b>「分享」圖示</b> (<i class="fa-solid fa-arrow-up-from-bracket text-blue-500"></i>)。</li>
+                        <li>選單往下滑，點選 <b>「加入主畫面」</b> (<i class="fa-regular fa-square-plus"></i>)。</li>
+                        <li>點擊右上角 <b>「新增」</b> 即可完成！</li>
+                    </ol>
+                </div>`;
+            } else {
+                html += `<div class="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                    <p class="font-bold text-[#5C544D] mb-1.5"><i class="fa-brands fa-android text-lg mr-1 text-green-600"></i>Android 手機安裝步驟：</p>
+                    <ol class="list-decimal list-inside space-y-1.5 text-gray-600">
+                        <li>請使用 <b>Chrome 瀏覽器</b> 開啟此網頁。</li>
+                        <li>點擊右上角的 <b>「三個點」選單</b> (<i class="fa-solid fa-ellipsis-vertical"></i>)。</li>
+                        <li>點選 <b>「加到主螢幕」</b> 或 <b>「安裝應用程式」</b>。</li>
+                        <li>按確認後，桌面就會出現專屬捷徑圖示！</li>
+                    </ol>
+                </div>`;
+            }
+            container.innerHTML = html;
             document.getElementById('installModal').classList.add('show');
         }
 
-        // 彈窗
         function showAlert(title, msg, type = 'info') {
             document.getElementById('alertTitle').innerText = title; document.getElementById('alertMsg').innerHTML = msg;
             const icon = document.getElementById('alertIcon'); const border = document.getElementById('alertCardBorder'); const btn = document.getElementById('alertBtn');
@@ -475,7 +589,6 @@
         }
         function closeModal(id) { document.getElementById(id).classList.remove('show'); }
 
-        // 角色與模組切換
         function switchRole(role) {
             currentRole = role;
             const body = document.getElementById('bodyEl');
@@ -491,7 +604,7 @@
                 bPat.className = 'nav-btn inactive-role'; bAdm.className = 'nav-btn active-admin';
                 processAdminList();
             }
-            switchModule(currentModule); // 保持模組狀態
+            switchModule(currentModule);
         }
 
         function requestAdminAccess() {
@@ -531,18 +644,17 @@
             } else {
                 const sSaved = localStorage.getItem('intg_sleep_' + globalPatientName); pSleepData = sSaved ? JSON.parse(sSaved) : {};
                 const eSaved = localStorage.getItem('intg_ex_' + globalPatientName); pExData = eSaved ? JSON.parse(eSaved) : { targets: { cardioDaily:0, strengthReps:0, strengthWeeklyDays:0 }, logs: {} };
-                if(!pExData.targets) pExData.targets = {};
+                if(!pExData.targets) pExData.targets = { cardioDaily:0, strengthReps:0, strengthWeeklyDays:0 };
+                if(!pExData.logs) pExData.logs = {};
             }
-            // 恢復畫面輸入值
             document.getElementById('targetCardio').value = pExData.targets.cardioDaily || '';
             document.getElementById('targetStrengthReps').value = pExData.targets.strengthReps || '';
             document.getElementById('targetStrengthDays').value = pExData.targets.strengthWeeklyDays || '';
             
-            syncGlobalDate(); // 會觸發載入當日資料並更新UI
+            syncGlobalDate();
         }
 
         function changeGlobalDate(offset) {
-            // 切換日期前，強制保存當前畫面的輸入
             calcSleep(); saveDailyEx();
             globalDateStr = addDaysStr(globalDateStr, offset);
             document.getElementById('globalDate').value = globalDateStr;
@@ -551,14 +663,13 @@
 
         function syncGlobalDate() {
             globalDateStr = document.getElementById('globalDate').value || getTodayStr();
-            document.getElementById('sleepDateDisplay').innerText = globalDateStr;
-            document.getElementById('exDateDisplay').innerText = globalDateStr;
+            const dayName = getDayOfWeek(globalDateStr);
+            document.getElementById('sleepDateDisplay').innerText = `${globalDateStr} (${dayName})`;
+            document.getElementById('exDateDisplay').innerText = `${globalDateStr} (${dayName})`;
             
-            // 載入睡眠輸入
             const sLog = pSleepData[globalDateStr] || getEmptySleep();
             slpInputs.forEach(id => document.getElementById(id).value = sLog[id] || '');
             
-            // 載入運動輸入
             const eLog = pExData.logs[globalDateStr] || getEmptyEx();
             exInputs.forEach(id => document.getElementById(id).value = eLog[id] || '');
             
@@ -566,7 +677,6 @@
             updatePatientExUI();
         }
 
-        // 睡眠計算與儲存
         function calcSleep() {
             if(!globalPatientName) return;
             let d = pSleepData[globalDateStr] || getEmptySleep();
@@ -589,7 +699,8 @@
             updatePatientSleepUI();
         }
 
-        function setPatSleepMode(m) { pSleepChartMode = m; 
+        function setPatSleepMode(m) {
+            pSleepChartMode = m; 
             document.getElementById('btnPatSleepW').className = m === 'week' ? 'text-xs px-3 py-1 rounded-full bg-[#DDA793] text-white font-bold' : 'text-xs px-3 py-1 rounded-full bg-gray-200 text-gray-600 font-bold';
             document.getElementById('btnPatSleepA').className = m === 'all' ? 'text-xs px-3 py-1 rounded-full bg-[#DDA793] text-white font-bold' : 'text-xs px-3 py-1 rounded-full bg-gray-200 text-gray-600 font-bold';
             document.getElementById('patAvgTag').classList.toggle('hidden-view', m !== 'week');
@@ -598,7 +709,7 @@
 
         function updatePatientSleepUI() {
             const d = pSleepData[globalDateStr] || getEmptySleep();
-            document.getElementById('sleepDayTitle').innerText = `${globalDateStr} 睡眠指標`;
+            document.getElementById('sleepDayTitle').innerText = `${globalDateStr} (${getDayOfWeek(globalDateStr)}) 睡眠指標`;
             if(d.isFilled) { document.getElementById('resTIB').innerHTML = `${d.tib.toFixed(1)} <span class="text-xs">hr</span>`; document.getElementById('resTST').innerHTML = `${d.tst.toFixed(1)} <span class="text-xs">hr</span>`; document.getElementById('resSE').innerHTML = `${d.se.toFixed(1)} <span class="text-xs">%</span>`; }
             else { document.getElementById('resTIB').innerHTML = `--`; document.getElementById('resTST').innerHTML = `--`; document.getElementById('resSE').innerHTML = `--`; }
 
@@ -615,34 +726,37 @@
 
             if(pSleepChartMode==='week') document.getElementById('avgSE').innerText = cnt>0 ? (sumSE/cnt).toFixed(1)+'%' : '--%';
             document.getElementById('patSleepChartWrap').style.minWidth = pSleepChartMode==='all' && labels.length>7 ? `${labels.length*55}px` : '100%';
-            drawChart('patSleepChart', labels, tst, tib, se, '#9AB098', '#E8DCCB', '#DDA793', pSleepChartInst, inst => pSleepChartInst = inst, false, '小時');
+            drawChart('patSleepChart', labels, tst, tib, se, '#9AB098', '#E8DCCB', '#DDA793', pSleepChartInst, inst => pSleepChartInst = inst);
         }
 
-        // 運動計算與儲存
         function saveExTargets() {
             if(!globalPatientName) return;
             pExData.targets.cardioDaily = parseInt(document.getElementById('targetCardio').value,10)||0;
             pExData.targets.strengthReps = parseInt(document.getElementById('targetStrengthReps').value,10)||0;
             pExData.targets.strengthWeeklyDays = parseInt(document.getElementById('targetStrengthDays').value,10)||0;
-            localStorage.setItem('intg_ex_' + globalPatientName, JSON.stringify(pExData)); updatePatientExUI();
+            localStorage.setItem('intg_ex_' + globalPatientName, JSON.stringify(pExData));
+            updatePatientExUI();
         }
+
         function saveDailyEx() {
             if(!globalPatientName) return;
             let log = pExData.logs[globalDateStr] || getEmptyEx();
             exInputs.forEach(id => log[id] = document.getElementById(id).value);
             const cM = parseInt(log.cardioMins,10)||0; const sR = parseInt(log.strengthReps,10)||0; const sS = parseInt(log.strengthSets,10)||0;
             log.hasCardio = cM > 0; log.hasStrength = (sR * sS) > 0;
-            pExData.logs[globalDateStr] = log; localStorage.setItem('intg_ex_' + globalPatientName, JSON.stringify(pExData)); updatePatientExUI();
+            pExData.logs[globalDateStr] = log;
+            localStorage.setItem('intg_ex_' + globalPatientName, JSON.stringify(pExData));
+            updatePatientExUI();
         }
 
-        function setPatExMode(m) { pExChartMode = m; 
+        function setPatExMode(m) {
+            pExChartMode = m; 
             document.getElementById('btnPatExW').className = m === 'week' ? 'text-xs px-3 py-1 rounded-full bg-[#6B8EAD] text-white font-bold' : 'text-xs px-3 py-1 rounded-full bg-gray-200 text-gray-600 font-bold';
             document.getElementById('btnPatExA').className = m === 'all' ? 'text-xs px-3 py-1 rounded-full bg-[#6B8EAD] text-white font-bold' : 'text-xs px-3 py-1 rounded-full bg-gray-200 text-gray-600 font-bold';
             updatePatientExUI(); 
         }
 
         function updatePatientExUI() {
-            if(!globalPatientName) return;
             let dates=[];
             if(pExChartMode === 'week') { for(let i=6; i>=0; i--) dates.push(addDaysStr(globalDateStr, -i)); }
             else { dates = Object.keys(pExData.logs).sort(); if(!dates.length) for(let i=6; i>=0; i--) dates.push(addDaysStr(globalDateStr, -i)); }
@@ -654,76 +768,78 @@
             }
 
             dates.forEach(dStr => {
-                labels.push(pExChartMode==='all' ? dStr.substring(5) : dStr.substring(5));
+                labels.push(`${dStr.substring(5)}(${getDayOfWeek(dStr)})`);
                 const lg = pExData.logs[dStr];
                 if(lg) { cardio.push(parseInt(lg.cardioMins,10)||0); strength.push((parseInt(lg.strengthReps,10)||0)*(parseInt(lg.strengthSets,10)||0)); } else { cardio.push(0); strength.push(0); }
             });
 
             const tC = pExData.targets.cardioDaily||0, tSR = pExData.targets.strengthReps||0, tSD = pExData.targets.strengthWeeklyDays||0;
             if(pExChartMode==='week') {
-                document.getElementById('cardioStatusText').innerText = `目標:${tC}分/今:${cTodayMins}分`;
-                document.getElementById('strengthStatusText').innerHTML = `今:${sTodayReps}次 ｜ 近7天:${p7StrDays}天 (目標:${tSD}天/週)`;
+                document.getElementById('cardioStatusText').innerText = `今日目標:${tC}分 / 完成:${cTodayMins}分`;
+                document.getElementById('strengthStatusText').innerHTML = `今日:${sTodayReps}次 (目標:${tSR}) ｜ 近7天:${p7StrDays}天 (目標:${tSD}天/週)`;
             } else {
                 let tot = Object.values(pExData.logs).filter(l=>l.hasStrength).length;
-                document.getElementById('cardioStatusText').innerText = ''; document.getElementById('strengthStatusText').innerHTML = `累計肌力:${tot}天 (目標:${tSD}天/週)`;
+                document.getElementById('cardioStatusText').innerText = ''; document.getElementById('strengthStatusText').innerHTML = `累計肌力天數:${tot}天 (每週目標:${tSD}天)`;
             }
 
-            const w = pExChartMode==='all' && labels.length>7 ? `${labels.length*50}px` : '100%';
+            const w = pExChartMode==='all' && labels.length>7 ? `${labels.length*55}px` : '100%';
             document.getElementById('patCardioChartWrap').style.minWidth = w; document.getElementById('patStrengthChartWrap').style.minWidth = w;
-            drawExChart('patCardioChart', labels, cardio, '#E48A72', tC, pCardioChartInst, i=>pCardioChartInst=i, '分');
-            drawExChart('patStrengthChart', labels, strength, '#6B8EAD', tSR, pStrengthChartInst, i=>pStrengthChartInst=i, '次');
+            drawExChart('patCardioChart', labels, cardio, '#E48A72', tC, pCardioChartInst, i=>pCardioChartInst=i);
+            drawExChart('patStrengthChart', labels, strength, '#6B8EAD', tSR, pStrengthChartInst, i=>pStrengthChartInst=i);
             
-            // 產生鼓勵文字
             genExFeedback(cTodayMins, tC, sTodayReps, tSR, p7StrDays, tSD);
         }
 
         function genExFeedback(cToday, cT, sToday, sRT, sDays, sDT) {
             const tit=document.getElementById('feedbackTitle'), txt=document.getElementById('feedbackText'), icn=document.getElementById('feedbackIcon'), box=document.getElementById('feedbackBox');
-            if(cT===0 && sRT===0 && sDT===0) { tit.innerText="設定目標，原子化拆解"; txt.innerText="請設定小目標。大腦討厭壓力，越不費力越好喔！"; icn.innerHTML='<i class="fa-solid fa-seedling"></i>'; box.style.borderColor='#9AB098'; return; }
+            if(cT===0 && sRT===0 && sDT===0) { tit.innerText="設定目標，開始原子化拆解"; txt.innerText="請在上方設定小目標。大腦討厭壓力，目標設得越不費力越好喔！"; icn.innerHTML='<i class="fa-solid fa-seedling"></i>'; box.style.borderLeftColor='#9AB098'; return; }
             let msg="", aw=false;
-            if(cT>0) { if(cToday>=cT){msg+=`太棒了！有氧${cToday}分達標。`; aw=true;} else if(cToday>0){msg+=`有氧${cToday}分，每一分鐘都是愛自己！`;} else{msg+=`今日尚無有氧，可與日常習慣結合喔。`;} }
+            if(cT>0) { if(cToday>=cT){msg+=`太棒了！今日有氧完成 <b>${cToday}</b> 分鐘，順利達標！`; aw=true;} else if(cToday>0){msg+=`今日有氧 <b>${cToday}</b> 分鐘，每一分鐘都是愛自己的證明！`;} else{msg+=`今日尚未記錄有氧，試著接在日常習慣後做個 3 分鐘吧！`;} }
             if(sRT>0 || sDT>0) {
                 msg+="<br>";
-                if(sToday>0) { if(sRT>0 && sToday>=sRT) msg+=`肌力${sToday}次跨越單次目標！`; else msg+=`肌力${sToday}次，微小的累積都是力量！`; }
-                if(sDT>0) { if(sDays>=sDT) {msg+=` 近7天已做${sDays}天，達成每週目標！`; aw=true;} else {msg+=` 近7天做${sDays}天(目標${sDT}天)，穩定持續最珍貴。`;} }
+                if(sToday>0) { if(sRT>0 && sToday>=sRT) msg+=`今日肌力完成 <b>${sToday}</b> 次，跨越單次目標！`; else msg+=`今日肌力完成 <b>${sToday}</b> 次，微小的累積都是力量！`; }
+                if(sDT>0) { if(sDays>=sDT) {msg+=` 近 7 天已做 <b>${sDays}</b> 天肌力，達成每週目標！`; aw=true;} else {msg+=` 近 7 天完成 <b>${sDays}</b> 天肌力 (每週目標 ${sDT} 天)，溫柔持續最珍貴。`;} }
             }
             txt.innerHTML=msg;
             if(aw) { tit.innerText="太棒了，繼續保持！"; icn.innerHTML='<i class="fa-solid fa-fire text-[#E48A72]"></i>'; box.style.borderLeftColor='#E48A72'; }
-            else { tit.innerText="每一小步都值得肯定"; icn.innerHTML='<i class="fa-solid fa-heart text-[#DDA793]"></i>'; box.style.borderLeftColor='#DDA793'; }
+            else { tit.innerText="每一小步，都值得肯定"; icn.innerHTML='<i class="fa-solid fa-heart text-[#DDA793]"></i>'; box.style.borderLeftColor='#DDA793'; }
         }
 
-        // 統一雲端同步
+        // 統一雲端同步 (修復原先函式名稱錯誤)
         function syncToCloudAll() {
-            if(!globalPatientName) return showAlert('提示', '請先輸入姓名。', 'error');
-            calcSleep(); saveTargets(); saveDailyEx();
+            globalPatientName = document.getElementById('patientName').value.trim();
+            if(!globalPatientName) return showAlert('提示', '請先輸入病友姓名再上傳。', 'error');
+            
+            calcSleep();
+            saveExTargets();
+            saveDailyEx();
+
             const p1 = sleepDB.child(globalPatientName).set(pSleepData);
             const p2 = exerciseDB.child(globalPatientName).set(pExData);
             Promise.all([p1, p2])
-                .then(() => showAlert('上傳成功！', `✅ <b>${globalPatientName}</b>，您的睡眠與運動記錄已同步至雲端後台。`, 'success'))
-                .catch(err => showAlert('上傳失敗', `連線異常：${err.message}`, 'error'));
+                .then(() => showAlert('上傳成功！', `✅ 謝謝您，<b>${globalPatientName}</b>！<br>您的睡眠與運動記錄已同步至醫療團隊雲端。`, 'success'))
+                .catch(err => showAlert('上傳失敗', `連線異常或存取被拒：${err.message}`, 'error'));
         }
 
         // ==========================================
         // 4. 管理後台邏輯
         // ==========================================
         function processAdminList() {
-            sleepDB.once('value').then(s => {
-                exerciseDB.once('value').then(e => {
-                    adminUsers.clear();
-                    if(s.val()) Object.keys(s.val()).forEach(k => adminUsers.add(k));
-                    if(e.val()) Object.keys(e.val()).forEach(k => adminUsers.add(k));
-                    
-                    const sel = document.getElementById('adminPatientSelect');
-                    const cur = sel.value; sel.innerHTML = '<option value="">請選擇病友...</option>';
-                    Array.from(adminUsers).sort().forEach(u => { const opt=document.createElement('option'); opt.value=u; opt.innerText=u; sel.appendChild(opt); });
-                    if(adminUsers.has(cur)) sel.value = cur;
-                    
-                    const hasUser = !!sel.value;
-                    document.getElementById('btnExportExcel').classList.toggle('hidden-view', !hasUser);
-                    document.getElementById('btnDeletePatient').classList.toggle('hidden-view', !hasUser);
-                    
-                    if(!hasUser) { document.getElementById('adminDashboard').classList.add('hidden-view'); document.getElementById('adminEmptyState').classList.remove('hidden-view'); }
-                });
+            Promise.all([sleepDB.once('value'), exerciseDB.once('value')]).then(snaps => {
+                adminUsers.clear();
+                if(snaps[0].val()) Object.keys(snaps[0].val()).forEach(k => adminUsers.add(k));
+                if(snaps[1].val()) Object.keys(snaps[1].val()).forEach(k => adminUsers.add(k));
+                
+                const sel = document.getElementById('adminPatientSelect');
+                const cur = sel.value; sel.innerHTML = '<option value="">請選擇病友...</option>';
+                Array.from(adminUsers).sort().forEach(u => { const opt=document.createElement('option'); opt.value=u; opt.innerText=u; sel.appendChild(opt); });
+                if(adminUsers.has(cur)) sel.value = cur;
+                
+                const hasUser = !!sel.value;
+                document.getElementById('btnExportExcel').classList.toggle('hidden-view', !hasUser);
+                document.getElementById('btnDeletePatient').classList.toggle('hidden-view', !hasUser);
+                
+                if(!hasUser) { document.getElementById('adminDashboard').classList.add('hidden-view'); document.getElementById('adminEmptyState').classList.remove('hidden-view'); }
             });
         }
 
@@ -743,23 +859,22 @@
             });
         }
 
-        // 後台睡眠渲染
         function renderAdminSleep() {
             const dates = Object.keys(aSleepSnap).filter(d => aSleepSnap[d].isFilled).sort((a,b)=>b.localeCompare(a));
             const tb = document.getElementById('admSleepTableBody'); tb.innerHTML='';
             let tSE=0, tTST=0, tTIB=0, cnt=0, alertMsg="";
             dates.forEach(dStr => {
                 const dy = aSleepSnap[dStr]; tSE+=dy.se; tTST+=dy.tst; tTIB+=(dy.tib||0); cnt++;
-                if(dy.se<80) alertMsg = "⚠️ 偵測到睡眠效率低於 80%，需關注是否有夜間喘息或早醒。";
-                tb.innerHTML += `<tr><td class="font-bold">${dStr}</td><td>${dy.timeA||'-'}</td><td>${dy.timeB||'-'}</td><td>${dy.timeC??'-'}</td><td>${dy.timeD??'-'}</td><td>${dy.timeE??'-'}</td><td>${dy.timeF||'-'}</td><td>${dy.timeG||'-'}</td><td class="font-bold">${(dy.tib||0).toFixed(1)}</td><td class="text-[#4A90E2] font-bold">${(dy.tst||0).toFixed(1)}</td><td class="font-bold ${dy.se<80?'text-red-500':'text-green-600'}">${(dy.se||0).toFixed(1)}%</td><td>${dy.napTime??'-'}</td><td class="text-left text-gray-500 max-w-[150px] truncate">${dy.sleepNotes||dy.notes||'-'}</td></tr>`;
+                if(dy.se<80) alertMsg = "⚠️ 偵測到睡眠效率低於 80%，需關注夜間狀況。";
+                tb.innerHTML += `<tr><td class="font-bold">${dStr}(${getDayOfWeek(dStr)})</td><td>${dy.timeA||'-'}</td><td>${dy.timeB||'-'}</td><td>${dy.timeC??'-'}</td><td>${dy.timeD??'-'}</td><td>${dy.timeE??'-'}</td><td>${dy.timeF||'-'}</td><td>${dy.timeG||'-'}</td><td class="font-bold">${(dy.tib||0).toFixed(1)}</td><td class="text-[#4A90E2] font-bold">${(dy.tst||0).toFixed(1)}</td><td class="font-bold ${dy.se<80?'text-red-500':'text-green-600'}">${(dy.se||0).toFixed(1)}%</td><td>${dy.napTime??'-'}</td><td class="text-left text-gray-500 max-w-[150px] truncate">${dy.sleepNotes||dy.notes||'-'}</td></tr>`;
             });
-            if(cnt>0) { document.getElementById('admAvgSE').innerText=(tSE/cnt).toFixed(1)+'%'; document.getElementById('admAvgTST').innerHTML=(tTST/cnt).toFixed(1)+'<span class="text-xs">hr</span>'; document.getElementById('admAvgTIB').innerHTML=(tTIB/cnt).toFixed(1)+'<span class="text-xs">hr</span>'; document.getElementById('admAlertSleep').innerHTML=alertMsg||'正常。'; }
-            else { document.getElementById('admAvgSE').innerText='--%'; document.getElementById('admAvgTST').innerText='--'; document.getElementById('admAvgTIB').innerText='--'; document.getElementById('admAlertSleep').innerText='無資料'; }
-            if(dates.length>0 && !document.getElementById('admSleepStartDate').value) document.getElementById('admSleepStartDate').value = dates[dates.length-1];
+            if(cnt>0) { document.getElementById('admAvgSE').innerText=(tSE/cnt).toFixed(1)+'%'; document.getElementById('admAvgTST').innerHTML=(tTST/cnt).toFixed(1)+'<span class="text-xs"> hr</span>'; document.getElementById('admAvgTIB').innerHTML=(tTIB/cnt).toFixed(1)+'<span class="text-xs"> hr</span>'; document.getElementById('admAlertSleep').innerHTML=alertMsg||'指標正常。'; }
+            else { document.getElementById('admAvgSE').innerText='--%'; document.getElementById('admAvgTST').innerText='--'; document.getElementById('admAvgTIB').innerText='--'; document.getElementById('admAlertSleep').innerText='尚無睡眠資料'; }
+            if(dates.length>0) document.getElementById('admSleepStartDate').value = dates[dates.length-1];
             updateAdmSleepChart();
         }
 
-        function setAdmSleepMode(m) { aSleepChartMode=m; document.getElementById('btnAdmSleepW').className = m==='week'?'text-xs px-2 py-1 rounded bg-[#DDA793] text-white font-bold':'text-xs px-2 py-1 rounded bg-gray-200 text-gray-600 font-bold'; document.getElementById('btnAdmSleepA').className = m==='all'?'text-xs px-2 py-1 rounded bg-[#DDA793] text-white font-bold':'text-xs px-2 py-1 rounded bg-gray-200 text-gray-600 font-bold'; updateAdmSleepChart(); }
+        function setAdmSleepMode(m) { aSleepChartMode=m; document.getElementById('btnAdmSleepW').className = m==='week'?'text-xs px-2.5 py-1 rounded bg-[#DDA793] text-white font-bold':'text-xs px-2.5 py-1 rounded bg-gray-200 text-gray-600 font-bold'; document.getElementById('btnAdmSleepA').className = m==='all'?'text-xs px-2.5 py-1 rounded bg-[#DDA793] text-white font-bold':'text-xs px-2.5 py-1 rounded bg-gray-200 text-gray-600 font-bold'; updateAdmSleepChart(); }
         function updateAdmSleepChart() {
             if(!aSleepSnap) return;
             const dates = Object.keys(aSleepSnap).filter(d => aSleepSnap[d].isFilled).sort();
@@ -768,97 +883,114 @@
                 let sd = document.getElementById('admSleepStartDate').value; if(!sd) { sd = dates.length?dates[0]:getTodayStr(); document.getElementById('admSleepStartDate').value=sd;}
                 for(let i=0; i<7; i++) cDates.push(addDaysStr(sd, i));
                 cDates.forEach(d=>{ const dy=aSleepSnap[d]; if(dy && dy.isFilled){t7SE+=dy.se;t7TST+=dy.tst;t7TIB+=(dy.tib||0);c7++;} });
-                document.getElementById('admRangeText').innerText=`${cDates[0]}~${cDates[6]}`; document.getElementById('adm7AvgSE').innerText=c7>0?(t7SE/c7).toFixed(1)+'%':'--%'; document.getElementById('adm7AvgTST').innerText=c7>0?(t7TST/c7).toFixed(1)+' hr':'-- hr'; document.getElementById('adm7AvgTIB').innerText=c7>0?(t7TIB/c7).toFixed(1)+' hr':'-- hr';
+                document.getElementById('admRangeText').innerText=`${cDates[0]} ~ ${cDates[6]}`; document.getElementById('adm7AvgSE').innerText=c7>0?(t7SE/c7).toFixed(1)+'%':'--%'; document.getElementById('adm7AvgTST').innerText=c7>0?(t7TST/c7).toFixed(1)+' hr':'-- hr'; document.getElementById('adm7AvgTIB').innerText=c7>0?(t7TIB/c7).toFixed(1)+' hr':'-- hr';
                 document.getElementById('admin7DaySummary').classList.remove('hidden-view');
             } else { cDates = dates.length?dates:[getTodayStr()]; document.getElementById('admin7DaySummary').classList.add('hidden-view'); }
             
             let l=[], t=[], tb=[], s=[];
             cDates.forEach((d,i)=>{ l.push(aSleepChartMode==='week'?`D${i+1} ${d.substring(5)}`:d.substring(5)); const dy=aSleepSnap[d]; if(dy&&dy.isFilled){t.push(dy.tst);tb.push(dy.tib);s.push(dy.se);}else{t.push(0);tb.push(0);s.push(0);} });
-            document.getElementById('admSleepChartWrap').style.minWidth = aSleepChartMode==='all'&&l.length>7?`${l.length*50}px`:'100%';
-            drawChart('admSleepChart', l, t, tb, s, '#9AB098', '#E8DCCB', '#DDA793', aSleepChartInst, i=>aSleepChartInst=i, true, '小時');
+            document.getElementById('admSleepChartWrap').style.minWidth = aSleepChartMode==='all'&&l.length>7?`${l.length*55}px`:'100%';
+            drawChart('admSleepChart', l, t, tb, s, '#4A90E2', '#CBD5E1', '#E74C3C', aSleepChartInst, i=>aSleepChartInst=i);
         }
 
-        // 後台運動渲染
         function renderAdminEx() {
-            const tg = aExSnap.targets; const ls = aExSnap.logs;
-            const tC = tg.cardioDaily||0, tSR = tg.strengthReps||0, tSD = tg.strengthWeeklyDays||0;
+            const tg = aExSnap.targets || {}; const ls = aExSnap.logs || {};
+            const tC = tg.cardioDaily||0, tSR = tg.strengthReps||0, tSD = tg.strengthWeeklyDays||tg.strengthWeekly||0;
             document.getElementById('admTarCardio').innerHTML=`${tC} <span class="text-xs text-gray-500">分/日</span>`; document.getElementById('admTarStrRep').innerHTML=`${tSR} <span class="text-xs text-gray-500">次</span>`; document.getElementById('admTarStrDay').innerHTML=`${tSD} <span class="text-xs text-gray-500">天/週</span>`;
             
             const dates = Object.keys(ls).filter(d => ls[d].hasCardio||ls[d].hasStrength||ls[d].exNotes||ls[d].notes).sort((a,b)=>b.localeCompare(a));
             const tb = document.getElementById('admExTableBody'); tb.innerHTML='';
             
             let l7C=0, l7SD=0, cMD=0; const ld = dates.length?dates[0]:getTodayStr();
-            for(let i=0; i<7; i++) { const d=ls[addDaysStr(ld,-i)]; if(d){ const m=parseInt(d.cardioMins)||0; l7C+=m; if(tC>0 && m>=tC) cMD++; if(d.hasStrength) l7SD++; } }
+            for(let i=0; i<7; i++) { const d=ls[addDaysStr(ld,-i)]; if(d){ const m=parseInt(d.cardioMins,10)||0; l7C+=m; if(tC>0 && m>=tC) cMD++; if(d.hasStrength) l7SD++; } }
             
             dates.forEach(ds=>{
-                const lg = ls[ds]; const sR=parseInt(lg.strengthReps)||0, sS=parseInt(lg.strengthSets)||0, tc=sR*sS;
-                tb.innerHTML+=`<tr><td class="font-bold">${ds}</td><td>${lg.cardioType||'-'}</td><td class="text-[#E48A72] font-bold">${lg.cardioMins||'-'}</td><td>${lg.strengthType||'-'}</td><td class="text-[#6B8EAD]">${lg.hasStrength?sR+'x'+sS:'-'}</td><td class="text-[#6B8EAD] font-bold">${tc>0?tc:'-'}</td><td class="text-left text-gray-500 max-w-[150px] truncate">${lg.exNotes||lg.notes||'-'}</td></tr>`;
+                const lg = ls[ds]; const sR=parseInt(lg.strengthReps,10)||0, sS=parseInt(lg.strengthSets,10)||0, tc=sR*sS;
+                tb.innerHTML+=`<tr><td class="font-bold">${ds}(${getDayOfWeek(ds)})</td><td>${lg.cardioType||'-'}</td><td class="text-[#E48A72] font-bold">${lg.cardioMins||'-'}</td><td>${lg.strengthType||'-'}</td><td class="text-[#6B8EAD]">${lg.hasStrength?sR+'下x'+sS+'組':'-'}</td><td class="text-[#6B8EAD] font-bold">${tc>0?tc+'次':'-'}</td><td class="text-left text-gray-500 max-w-[150px] truncate">${lg.exNotes||lg.notes||'-'}</td></tr>`;
             });
             
             let am=`近7天: 有氧達標 <span class="font-bold text-[#E48A72]">${cMD}</span> 天，肌力執行 <span class="font-bold text-[#4A7C59]">${l7SD}</span> 天。`;
-            if(tSD>0 && l7SD<tSD) am+=`<br>⚠️ 肌力未達週目標 (${tSD}天)。`; if(tC>0 && cMD<3) am+=`<br>ℹ️ 有氧頻率偏低。`;
-            document.getElementById('admAlertEx').innerHTML=am;
+            if(tSD>0 && l7SD<tSD) am+=`<br>⚠️ 肌力未達週目標 (${tSD}天)。`;
+            document.getElementById('admAlertEx').innerHTML= dates.length ? am : '尚無運動資料';
             updateAdmExChart();
         }
 
-        function setAdmExMode(m) { aExChartMode=m; document.getElementById('btnAdmExW').className = m==='week'?'text-xs px-2 py-1 rounded bg-[#E48A72] text-white font-bold':'text-xs px-2 py-1 rounded bg-gray-200 text-gray-600 font-bold'; document.getElementById('btnAdmExA').className = m==='all'?'text-xs px-2 py-1 rounded bg-[#E48A72] text-white font-bold':'text-xs px-2 py-1 rounded bg-gray-200 text-gray-600 font-bold'; updateAdmExChart(); }
+        function setAdmExMode(m) { aExChartMode=m; document.getElementById('btnAdmExW').className = m==='week'?'text-xs px-2.5 py-1 rounded bg-[#E48A72] text-white font-bold':'text-xs px-2.5 py-1 rounded bg-gray-200 text-gray-600 font-bold'; document.getElementById('btnAdmExA').className = m==='all'?'text-xs px-2.5 py-1 rounded bg-[#E48A72] text-white font-bold':'text-xs px-2.5 py-1 rounded bg-gray-200 text-gray-600 font-bold'; updateAdmExChart(); }
         function updateAdmExChart() {
             if(!aExSnap) return;
-            const dates = Object.keys(aExSnap.logs).filter(d=>aExSnap.logs[d].hasCardio||aExSnap.logs[d].hasStrength).sort();
+            const logs = aExSnap.logs || {}; const tg = aExSnap.targets || {};
+            const dates = Object.keys(logs).filter(d=>logs[d].hasCardio||logs[d].hasStrength).sort();
             let cDates=[]; if(aExChartMode==='week') { const ld=dates.length?dates[dates.length-1]:getTodayStr(); for(let i=6; i>=0; i--) cDates.push(addDaysStr(ld,-i)); } else { cDates=dates.length?dates:[getTodayStr()]; }
             
             let l=[], c=[], s=[];
-            cDates.forEach(d => { l.push(d.substring(5)); const lg=aExSnap.logs[d]; if(lg){ c.push(parseInt(lg.cardioMins)||0); s.push((parseInt(lg.strengthReps)||0)*(parseInt(lg.strengthSets)||0)); } else { c.push(0); s.push(0); } });
+            cDates.forEach(d => { l.push(`${d.substring(5)}(${getDayOfWeek(d)})`); const lg=logs[d]; if(lg){ c.push(parseInt(lg.cardioMins,10)||0); s.push((parseInt(lg.strengthReps,10)||0)*(parseInt(lg.strengthSets,10)||0)); } else { c.push(0); s.push(0); } });
             
-            const w = aExChartMode==='all'&&l.length>7?`${l.length*50}px`:'100%';
+            const w = aExChartMode==='all'&&l.length>7?`${l.length*55}px`:'100%';
             document.getElementById('admCardioChartWrap').style.minWidth=w; document.getElementById('admStrengthChartWrap').style.minWidth=w;
-            drawExChart('admCardioChart', l, c, '#E48A72', aExSnap.targets.cardioDaily||0, aCardioChartInst, i=>aCardioChartInst=i, '分', true);
-            drawExChart('admStrengthChart', l, s, '#6B8EAD', aExSnap.targets.strengthReps||0, aStrengthChartInst, i=>aStrengthChartInst=i, '次', true);
+            drawExChart('admCardioChart', l, c, '#E48A72', tg.cardioDaily||0, aCardioChartInst, i=>aCardioChartInst=i);
+            drawExChart('admStrengthChart', l, s, '#6B8EAD', tg.strengthReps||0, aStrengthChartInst, i=>aStrengthChartInst=i);
         }
 
         // ==========================================
-        // 5. 匯出 Excel (雙分頁) 與刪除
+        // 5. 匯出雙分頁 Excel 與刪除
         // ==========================================
         function exportToExcelAll() {
             const user = document.getElementById('adminPatientSelect').value;
-            if(!user || !aSleepSnap || !aExSnap) return showAlert('提示', '無法匯出資料', 'error');
+            if(!user) return showAlert('提示', '請先選擇病友', 'error');
 
             const wb = XLSX.utils.book_new();
+            let hasSheet = false;
             
-            // 睡眠分頁
-            const sDates = Object.keys(aSleepSnap).filter(d=>aSleepSnap[d].isFilled).sort();
-            const sData = sDates.map(d => { const l=aSleepSnap[d]; return {"日期":`${d}(${getDayOfWeek(d)})`,"上床":l.timeA||'',"熄燈":l.timeB||'',"入睡耗時":parseInt(l.timeC)||0,"醒來次數":parseInt(l.timeD)||0,"醒來總時":parseInt(l.timeE)||0,"清醒":l.timeF||'',"下床":l.timeG||'',"躺床(hr)":parseFloat((l.tib||0).toFixed(1)),"實睡(hr)":parseFloat((l.tst||0).toFixed(1)),"效率(%)":parseFloat((l.se||0).toFixed(1)),"小睡(分)":parseInt(l.napTime)||0,"註記":l.sleepNotes||l.notes||''}; });
-            if(sData.length>0) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sData), "睡眠日誌");
+            if(aSleepSnap) {
+                const sDates = Object.keys(aSleepSnap).filter(d=>aSleepSnap[d].isFilled).sort();
+                const sData = sDates.map(d => { const l=aSleepSnap[d]; return {"日期":`${d}(${getDayOfWeek(d)})`,"上床":l.timeA||'',"熄燈":l.timeB||'',"入睡耗時(分)":parseInt(l.timeC,10)||0,"醒來次數":parseInt(l.timeD,10)||0,"醒來總時(分)":parseInt(l.timeE,10)||0,"清醒":l.timeF||'',"下床":l.timeG||'',"躺床(hr)":parseFloat((l.tib||0).toFixed(1)),"實睡(hr)":parseFloat((l.tst||0).toFixed(1)),"效率(%)":parseFloat((l.se||0).toFixed(1)),"小睡(分)":parseInt(l.napTime,10)||0,"特別註記":l.sleepNotes||l.notes||''}; });
+                if(sData.length>0) { XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sData), "睡眠日誌"); hasSheet = true; }
+            }
 
-            // 運動分頁
-            const eDates = Object.keys(aExSnap.logs).filter(d=>aExSnap.logs[d].hasCardio||aExSnap.logs[d].hasStrength||aExSnap.logs[d].exNotes||aExSnap.logs[d].notes).sort();
-            const eData = eDates.map(d => { const l=aExSnap.logs[d]; const r=parseInt(l.strengthReps)||0, s=parseInt(l.strengthSets)||0; return {"日期":`${d}(${getDayOfWeek(d)})`,"有氧項目":l.cardioType||'',"有氧(分)":parseInt(l.cardioMins)||0,"肌力項目":l.strengthType||'',"肌力次(每組)":r,"肌力組數":s,"肌力當日總次":r*s,"註記":l.exNotes||l.notes||''}; });
-            if(eData.length>0) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(eData), "運動日誌");
+            if(aExSnap && aExSnap.logs) {
+                const eDates = Object.keys(aExSnap.logs).filter(d=>aExSnap.logs[d].hasCardio||aExSnap.logs[d].hasStrength||aExSnap.logs[d].exNotes||aExSnap.logs[d].notes).sort();
+                const eData = eDates.map(d => { const l=aExSnap.logs[d]; const r=parseInt(l.strengthReps,10)||0, s=parseInt(l.strengthSets,10)||0; return {"日期":`${d}(${getDayOfWeek(d)})`,"有氧項目":l.cardioType||'',"有氧時間(分)":parseInt(l.cardioMins,10)||0,"肌力項目":l.strengthType||'',"肌力次數(每組)":r,"肌力組數":s,"肌力當日總次數":r*s,"特別註記":l.exNotes||l.notes||''}; });
+                if(eData.length>0) { XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(eData), "運動日誌"); hasSheet = true; }
+            }
 
-            if(sData.length===0 && eData.length===0) return showAlert('提示', '該病友無有效日誌', 'error');
+            if(!hasSheet) return showAlert('提示', '該病友尚無有效日誌資料可供匯出', 'error');
             XLSX.writeFile(wb, `${user}_健康整合日誌_${getTodayStr()}.xlsx`);
         }
 
-        function promptDeletePatient() { const u = document.getElementById('adminPatientSelect').value; if(u){ document.getElementById('deleteModal').classList.add('show'); } }
+        function promptDeletePatient() { const u = document.getElementById('adminPatientSelect').value; if(u) document.getElementById('deleteModal').classList.add('show'); }
         function executeDelete() {
             const u = document.getElementById('adminPatientSelect').value;
             Promise.all([sleepDB.child(u).remove(), exerciseDB.child(u).remove()])
-            .then(()=>{ closeModal('deleteModal'); showAlert('刪除成功',`已徹底移除 ${u} 的雲端資料。`,'success'); loadAdminData(); })
+            .then(()=>{ closeModal('deleteModal'); showAlert('刪除成功',`已徹底移除 ${u} 的睡眠與運動雲端資料。`,'success'); document.getElementById('adminPatientSelect').value=""; processAdminList(); })
             .catch(e=>showAlert('刪除失敗',e.message,'error'));
         }
 
         // ==========================================
-        // 6. 共用圖表引擎
+        // 6. 圖表引擎
         // ==========================================
-        function drawChart(canvasId, labels, tstArr, tibArr, seArr, colorTst, colorTib, colorSe, instanceRef, setInstance, isAdmin, yTit) {
+        function drawChart(canvasId, labels, tstArr, tibArr, seArr, colorTst, colorTib, colorSe, instanceRef, setInstance) {
             const ctx = document.getElementById(canvasId).getContext('2d'); if(instanceRef) instanceRef.destroy();
-            const newInst = new Chart(ctx, { type: 'bar', data: { labels: labels, datasets: [ { label: '睡眠總長', data: tstArr, backgroundColor: colorTst, borderRadius: 4, order: 2 }, { label: '躺床時間', data: tibArr, backgroundColor: colorTib, borderRadius: 4, order: 3 }, { label: '效率(%)', data: seArr, type: 'line', borderColor: colorSe, backgroundColor: colorSe, borderWidth: 2, pointRadius: 3, yAxisID: 'y1', order: 1 } ] }, options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, scales: { y: { beginAtZero: true, max: 14, display: isAdmin }, y1: { beginAtZero: true, position: 'right', max: 100, display: isAdmin, grid: { drawOnChartArea: false } } }, plugins: { legend: { display: isAdmin, position:'top', labels:{boxWidth:10, font:{size:10}} } } } }); setInstance(newInst);
+            const newInst = new Chart(ctx, {
+                type: 'bar',
+                data: { labels: labels, datasets: [
+                    { label: '睡眠總長(hr)', data: tstArr, backgroundColor: colorTst, borderRadius: 4, order: 2 },
+                    { label: '躺床時間(hr)', data: tibArr, backgroundColor: colorTib, borderRadius: 4, order: 3 },
+                    { label: '睡眠效率(%)', data: seArr, type: 'line', borderColor: colorSe, backgroundColor: colorSe, borderWidth: 2, pointRadius: 3, yAxisID: 'y1', order: 1 }
+                ]},
+                options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, scales: { y: { beginAtZero: true, max: 14 }, y1: { beginAtZero: true, position: 'right', max: 100, grid: { drawOnChartArea: false } } }, plugins: { legend: { display: true, position:'top', labels:{boxWidth:10, font:{size:10}} } } }
+            });
+            setInstance(newInst);
         }
-        function drawExChart(canvasId, labels, dataArr, color, tVal, instanceRef, setInstance, yTit, isAdmin=false) {
+
+        function drawExChart(canvasId, labels, dataArr, color, tVal, instanceRef, setInstance) {
             const ctx = document.getElementById(canvasId).getContext('2d'); if(instanceRef) instanceRef.destroy();
             let ds = [{ label: '完成量', data: dataArr, backgroundColor: color, borderRadius: 4, order: 2 }];
-            if(tVal>0) ds.push({ label: '目標', data: Array(labels.length).fill(tVal), type: 'line', borderColor: '#E74C3C', borderDash: [4,4], borderWidth: 1.5, pointRadius: 0, fill: false, order: 1 });
-            const newInst = new Chart(ctx, { type: 'bar', data: { labels: labels, datasets: ds }, options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, scales: { y: { beginAtZero: true, display: isAdmin } }, plugins: { legend: { display: isAdmin, position:'top', labels:{boxWidth:10, font:{size:10}} } } } }); setInstance(newInst);
+            if(tVal>0) ds.push({ label: '目標線', data: Array(labels.length).fill(tVal), type: 'line', borderColor: '#E74C3C', borderDash: [4,4], borderWidth: 2, pointRadius: 0, fill: false, order: 1 });
+            const newInst = new Chart(ctx, {
+                type: 'bar', data: { labels: labels, datasets: ds },
+                options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, scales: { y: { beginAtZero: true } }, plugins: { legend: { display: tVal>0, position:'top', align:'end', labels:{boxWidth:10, font:{size:10}} } } }
+            });
+            setInstance(newInst);
         }
     </script>
 </body>
