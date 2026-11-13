@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <!-- 已開啟雙指縮放功能：允許最高放大至 5 倍 (maximum-scale=5.0, user-scalable=yes) -->
+    <!-- 支援手機雙指自由縮放 (最高 5 倍) -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
     <meta name="theme-color" content="#9AB098">
     <title>整合健康日誌</title>
@@ -49,7 +49,7 @@
             -webkit-tap-highlight-color: transparent;
             -webkit-text-size-adjust: 100%;
             font-size: 18px;
-            touch-action: pan-x pan-y pinch-zoom; /* 明確允許雙指縮放與平移 */
+            touch-action: pan-x pan-y pinch-zoom;
         }
         body.patient-mode { background-color: var(--bg-patient); }
         body.admin-mode { background-color: var(--bg-admin); }
@@ -288,7 +288,7 @@
                                 <div class="input-group"><label>D. 醒來次數</label><input type="number" id="timeD" min="0" placeholder="0" oninput="calculateSleepDaily()"></div>
                             </div>
                             <div class="grid grid-cols-2 gap-3">
-                                <div class="input-group"><label>E. 醒來加總(分)</label><input type="number" id="timeE" min="0" placeholder="0" oninput="calculateSleepDaily()"></div>
+                                <div class="input-group"><label>E. 醒來時間加總(分)</label><input type="number" id="timeE" min="0" placeholder="0" oninput="calculateSleepDaily()"></div>
                                 <div class="input-group"><label>F. 早上清醒</label><input type="time" id="timeF" oninput="calculateSleepDaily()"></div>
                             </div>
                             <div class="input-group"><label>G. 下床時間</label><input type="time" id="timeG" oninput="calculateSleepDaily()"></div>
@@ -329,7 +329,7 @@
                             <h3 class="text-[22px] font-bold mb-1.5">上傳睡眠記錄給治療師</h3>
                             <p class="text-gray-600 mb-4 text-[16px] max-w-md">將記錄上傳，幫助治療師更了解您的居家睡眠狀況，為您提供更精準的照護建議。</p>
                             <button onclick="syncSleepToCloud()" class="bg-[#9AB098] hover:bg-[#839881] active:scale-95 text-white px-8 py-3.5 rounded-full font-bold shadow-md transition-all text-[19px]">
-                                <i class="fa-solid fa-cloud-arrow-up mr-1.5"></i>確認上傳睡眠日誌
+                                <i class="fa-solid fa-cloud-arrow-up mr-1.5"></i>儲存並上傳睡眠日誌
                             </button>
                         </div>
                     </div>
@@ -420,9 +420,11 @@
                             </div>
                         </div>
 
-                        <div class="text-center">
+                        <div class="card flex flex-col justify-center items-center text-center">
+                            <h3 class="text-[22px] font-bold mb-1.5">上傳運動記錄給治療師</h3>
+                            <p class="text-gray-600 mb-4 text-[16px] max-w-md">將記錄上傳，幫助治療師更了解您的居家活動狀況，為您提供更精準的照護建議。</p>
                             <button onclick="syncExToCloud()" class="bg-[#9AB098] hover:bg-[#839881] active:scale-95 text-white px-8 py-3.5 rounded-full font-bold shadow-md transition-all text-[19px]">
-                                <i class="fa-solid fa-cloud-arrow-up mr-1.5"></i>儲存並同步運動日誌至雲端
+                                <i class="fa-solid fa-cloud-arrow-up mr-1.5"></i>儲存並上傳運動日誌
                             </button>
                         </div>
                     </div>
@@ -496,7 +498,7 @@
                                     <thead>
                                         <tr>
                                             <th>日期(星期)</th><th>上床(A)</th><th>熄燈(B)</th><th>入睡耗時(C)</th><th>醒來次數(D)</th>
-                                            <th>醒來總時(E)</th><th>清醒(F)</th><th>下床(G)</th><th>躺床(hr)</th><th>實睡(hr)</th><th>效率</th><th>小睡</th><th>特別註記</th>
+                                            <th>醒來時間加總(E)</th><th>清醒(F)</th><th>下床(G)</th><th>躺床(hr)</th><th>實睡(hr)</th><th>效率</th><th>小睡</th><th>特別註記</th>
                                         </tr>
                                     </thead>
                                     <tbody id="adminSleepTableBody"></tbody>
@@ -878,7 +880,7 @@
             syncPatientName(nameVal);
             calculateSleepDaily();
             sleepDB.child(currentPatient).set(sleepData)
-                .then(() => showAlert('上傳成功！', `✅ 謝謝您，<b>${currentPatient}</b>。<br>您的睡眠記錄已成功上傳至雲端醫療後台。`, 'success'))
+                .then(() => showAlert('上傳成功！', `✅ 謝謝您，<b>${currentPatient}</b>。<br>您的睡眠日誌已成功儲存並上傳至雲端醫療後台。`, 'success'))
                 .catch((error) => showAlert('上傳失敗', `連線異常：${error.message}`, 'error'));
         }
 
@@ -1018,7 +1020,7 @@
             syncPatientName(nameVal);
             saveExTargets(); saveExDailyData();
             exerciseDB.child(currentPatient).set(exData)
-                .then(() => showAlert('上傳成功！', `✅ 謝謝您，<b>${currentPatient}</b>。<br>運動記錄與目標已成功同步至雲端後台。`, 'success'))
+                .then(() => showAlert('上傳成功！', `✅ 謝謝您，<b>${currentPatient}</b>。<br>您的運動日誌已成功儲存並上傳至雲端後台。`, 'success'))
                 .catch((error) => showAlert('上傳失敗', `連線異常：${error.message}`, 'error'));
         }
 
@@ -1213,7 +1215,7 @@
                 const sDates = Object.keys(admSleepSnap).filter(d => admSleepSnap[d].isFilled).sort();
                 const sExport = sDates.map(d => {
                     const l = admSleepSnap[d];
-                    return { "日期": `${d} (${getDayOfWeek(d)})`, "上床時間": l.timeA || '', "熄燈時間": l.timeB || '', "入睡耗時(分)": parseInt(l.timeC, 10)||0, "醒來次數": parseInt(l.timeD, 10)||0, "醒來總時(分)": parseInt(l.timeE, 10)||0, "清醒時間": l.timeF || '', "下床時間": l.timeG || '', "躺床時間(小時)": parseFloat((l.tib||0).toFixed(1)), "實際睡眠(小時)": parseFloat((l.tst||0).toFixed(1)), "睡眠效率(%)": parseFloat((l.se||0).toFixed(1)), "小睡(分)": parseInt(l.napTime, 10)||0, "特別註記": l.notes || '' };
+                    return { "日期": `${d} (${getDayOfWeek(d)})`, "上床時間": l.timeA || '', "熄燈時間": l.timeB || '', "入睡耗時(分)": parseInt(l.timeC, 10)||0, "醒來次數": parseInt(l.timeD, 10)||0, "醒來時間加總(分)": parseInt(l.timeE, 10)||0, "清醒時間": l.timeF || '', "下床時間": l.timeG || '', "躺床時間(小時)": parseFloat((l.tib||0).toFixed(1)), "實際睡眠(小時)": parseFloat((l.tst||0).toFixed(1)), "睡眠效率(%)": parseFloat((l.se||0).toFixed(1)), "小睡(分)": parseInt(l.napTime, 10)||0, "特別註記": l.notes || '' };
                 });
                 if(sExport.length > 0) { XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sExport), "雲端睡眠日誌"); hasSheet = true; }
             }
